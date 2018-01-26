@@ -69,3 +69,6 @@ duckdns # uses duckdns.yaml in the same directory as the default
 duckdns -c /path/to/duckdns.yaml
 
 ```
+
+Note: This does not currently allow for specification of an IP address. The
+address that is observed by DuckDNS is what is used.
