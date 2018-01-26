@@ -1,6 +1,6 @@
 # duckdns
 
-[![Build Status](https://travis-ci.org/invisiblethreat/duckdns.svg?branch=master)
+![Build Status](https://travis-ci.org/invisiblethreat/duckdns.svg?branch=master)
 
 Golang client for updating DNS entries at https://duckdns.org
 
