@@ -1,0 +1,19 @@
+language: go
+sudo: false
+
+matrix:
+  include:
+    - go: 1.8
+    - go: 1.9
+    - go: tip
+
+install:
+  - # Skip
+
+script:
+  - go get -t -v ./...
+  - diff -u <(echo -n) <(gofmt -d .)
+  - go tool vet .
+  - GOARCH=linux go build -o duckdns-linux
+  - GOARCH=darwin go build -o duckdns-macos
+  - GOARCH=windows go build -o duckdns-windows
