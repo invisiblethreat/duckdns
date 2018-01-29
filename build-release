@@ -1,0 +1,14 @@
+#!/bin/bash
+
+PROJECT="duckdns"
+TAG=$(git describe --tags --abbrev=0)
+RELEASE_DIR="release-${TAG}"
+mkdir $RELEASE_DIR
+
+OS=(darwin linux windows)
+for i in ${OS[@]}
+do
+  echo -n "Building  ${RELEASE_DIR}/${PROJECT}-${i}..."
+  GOOS=$i go build -o ${RELEASE_DIR}/${PROJECT}-${TAG}-${i}
+  echo " Done."
+done
