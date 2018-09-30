@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/TV4/env"
@@ -120,7 +121,10 @@ func makeUpdate(update Update) error {
 			errs = append(errs, err.Error())
 		}
 
-		bodyBytes, _ := ioutil.ReadAll(res.Body)
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		res.Body.Close()
 
 		if strings.Contains(string(bodyBytes), "KO") {
@@ -170,10 +174,9 @@ func main() {
 		getConfigFile(&update, cli.File)
 	}
 
-	err := makeUpdate(update)
-
-	if err != nil {
+	if err := makeUpdate(update); err != nil {
 		logrus.WithError(err).Fatal("error updating IP address")
+		os.Exit(1)
 	}
 	logrus.Debug("IP address updated successfully")
 }
