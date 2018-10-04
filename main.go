@@ -120,16 +120,21 @@ func makeUpdate(update Update) error {
 		res, err := http.Get(url)
 		if err != nil {
 			errs = append(errs, err.Error())
+			logrus.WithError(err).Error("Error contacting DuckDNS server")
+			continue
 		}
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return err
+			errs = append(errs, err.Error())
+			logrus.WithError(err).Error("Error reading body response")
+			continue
 		}
 		res.Body.Close()
 
 		if strings.Contains(string(bodyBytes), "KO") {
-			return fmt.Errorf("error updating %s with DuckDNS", v)
+			errs = append(errs, fmt.Sprintf("Error updating %s with DuckDNS", v))
+			continue
 		}
 
 		logrus.Debugf("updated DuckDNS for name %s", v)
