@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/TV4/env"
@@ -105,6 +106,7 @@ func makeUpdate(update Update) error {
 	logrus.Debugf("Dumping update params: %#v", update)
 	if !update.Valid() {
 		logrus.Fatal("Arguments not set for update!")
+		os.Exit(1)
 	}
 	var errs []string
 	stub := "https://www.duckdns.org/update?domains="
@@ -118,13 +120,21 @@ func makeUpdate(update Update) error {
 		res, err := http.Get(url)
 		if err != nil {
 			errs = append(errs, err.Error())
+			logrus.WithError(err).Error("Error contacting DuckDNS server")
+			continue
 		}
 
-		bodyBytes, _ := ioutil.ReadAll(res.Body)
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			errs = append(errs, err.Error())
+			logrus.WithError(err).Error("Error reading body response")
+			continue
+		}
 		res.Body.Close()
 
 		if strings.Contains(string(bodyBytes), "KO") {
-			return fmt.Errorf("error updating %s with DuckDNS", v)
+			errs = append(errs, fmt.Sprintf("Error updating %s with DuckDNS", v))
+			continue
 		}
 
 		logrus.Debugf("updated DuckDNS for name %s", v)
@@ -170,10 +180,9 @@ func main() {
 		getConfigFile(&update, cli.File)
 	}
 
-	err := makeUpdate(update)
-
-	if err != nil {
+	if err := makeUpdate(update); err != nil {
 		logrus.WithError(err).Fatal("error updating IP address")
+		os.Exit(1)
 	}
 	logrus.Debug("IP address updated successfully")
 }
