@@ -106,6 +106,7 @@ func makeUpdate(update Update) error {
 	logrus.Debugf("Dumping update params: %#v", update)
 	if !update.Valid() {
 		logrus.Fatal("Arguments not set for update!")
+		os.Exit(1)
 	}
 	var errs []string
 	stub := "https://www.duckdns.org/update?domains="
