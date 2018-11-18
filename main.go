@@ -196,5 +196,5 @@ func main() {
 		log.WithError(err).Fatal("error updating IP address")
 		os.Exit(1)
 	}
-	log.Debug("IP address updated successfully")
+	log.Info("IP address updated successfully")
 }
