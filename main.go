@@ -25,6 +25,7 @@ type CLIOptions struct {
 	Debug bool
 	File  string
 	Token string
+	Log   string
 	Names []string
 }
 
@@ -38,43 +39,43 @@ func (u *Update) Valid() bool {
 
 // GetConfigCLI sets the arguments for an update if they have been passed in on
 // the CLI
-func getConfigCLI(c CLIOptions) Update {
+func getConfigCLI(c CLIOptions, log *logrus.Logger) Update {
 	var u Update
 
 	u.Token = c.Token
-	logrus.Debugf("Set token from CLI to %s", c.Token)
+	log.Debugf("Set token from CLI to %s", c.Token)
 	u.Names = c.Names
-	logrus.Debugf("Set names from CLI to %s", strings.Join(c.Names, ", "))
+	log.Debugf("Set names from CLI to %s", strings.Join(c.Names, ", "))
 
 	return u
 }
 
 // GetConfigFile reads the config for DuckDNS
-func getConfigFile(existing *Update, file string) {
+func getConfigFile(existing *Update, file string, log *logrus.Logger) {
 
 	var update Update
 
 	yamlFile, err := ioutil.ReadFile(file)
 	if err != nil {
-		logrus.WithError(err).Debug("error reading file")
+		log.WithError(err).Debug("error reading file")
 		return
 	}
 	err = yaml.Unmarshal(yamlFile, &update)
 	if err != nil {
-		logrus.WithError(err).Debug("error unmarshaling YAML file")
+		log.WithError(err).Debug("error unmarshaling YAML file")
 		return
 	}
 
 	// Set the token if it's not empty and doesn't already exist
 	if update.Token == "" {
-		logrus.Debugf("the token is empty after trying to parse %s", file)
+		log.Debugf("the token is empty after trying to parse %s", file)
 	} else if existing.Token == "" {
 		existing.Token = update.Token
 	}
 
 	// Set names to if they exist and value is not already set
 	if len(update.Names) == 0 {
-		logrus.Debugf("no names/subdomains specified to update from %s", file)
+		log.Debugf("no names/subdomains specified to update from %s", file)
 	} else if len(existing.Names) == 0 {
 		existing.Names = update.Names
 	}
@@ -83,29 +84,29 @@ func getConfigFile(existing *Update, file string) {
 
 // GetConfigEnv is for reading items out of the environment if you didn't want
 // to set them on the CLI
-func getConfigEnv(u *Update) {
+func getConfigEnv(u *Update, log *logrus.Logger) {
 	token := env.String("DUCK_TOKEN", "")
 	name := env.String("DUCK_NAMES", "")
 
 	// Set the token if not already set
 	if u.Token == "" {
 		u.Token = token
-		logrus.Debugf("Set token from environment to %s", token)
+		log.Debugf("Set token from environment to %s", token)
 	}
 
 	if len(u.Names) == 0 && name != "" {
 		// support DUCK_NAME="domain1 domain2" from the environment
 		u.Names = strings.Split(name, " ")
 
-		logrus.Debugf("Set names from environment to %s",
+		log.Debugf("Set names from environment to %s",
 			strings.Join(u.Names, ", "))
 	}
 }
 
-func makeUpdate(update Update) error {
-	logrus.Debugf("Dumping update params: %#v", update)
+func makeUpdate(update Update, log *logrus.Logger) error {
+	log.Debugf("Dumping update params: %#v", update)
 	if !update.Valid() {
-		logrus.Fatal("Arguments not set for update!")
+		log.Fatal("Arguments not set for update!")
 		os.Exit(1)
 	}
 	var errs []string
@@ -116,28 +117,28 @@ func makeUpdate(update Update) error {
 	for _, v := range update.Names {
 
 		url := fmt.Sprintf("%s%s%s%s%s", stub, v, tokenStub, update.Token, ipStub)
-		logrus.Debugf("Update string: %s", url)
+		log.Debugf("Update string: %s", url)
 		res, err := http.Get(url)
 		if err != nil {
 			errs = append(errs, err.Error())
-			logrus.WithError(err).Error("Error contacting DuckDNS server")
-			continue
+			log.WithError(err).Error("Error contacting DuckDNS server")
+			break
 		}
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			errs = append(errs, err.Error())
-			logrus.WithError(err).Error("Error reading body response")
-			continue
+			log.WithError(err).Error("Error reading body response")
+			break
 		}
 		res.Body.Close()
 
 		if strings.Contains(string(bodyBytes), "KO") {
 			errs = append(errs, fmt.Sprintf("Error updating %s with DuckDNS", v))
-			continue
+			break
 		}
 
-		logrus.Debugf("updated DuckDNS for name %s", v)
+		log.Debugf("updated DuckDNS for name %s", v)
 
 	}
 
@@ -159,30 +160,41 @@ func main() {
 			"Use the flag multiple times to set multiple values.")
 	pflag.StringVarP(&cli.Token, "token", "t", "",
 		"Token for updating DuckDNS")
+	pflag.StringVarP(&cli.Log, "log", "l", "",
+		"Log file location")
 
 	pflag.Parse()
 
-	if cli.Debug {
-		logrus.SetLevel(logrus.DebugLevel)
+	log := logrus.New()
+	path, err := os.OpenFile(cli.Log, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		log.Out = path
+	} else {
+		log.Info("No logging path set, using stderr")
 	}
-	logrus.Debugf("Logging level: %s", logrus.GetLevel().String())
+
+	if cli.Debug {
+		log.SetLevel(logrus.DebugLevel)
+	}
+
+	log.Debugf("Logging level: %s", log.GetLevel().String())
 
 	// CLI vars
-	update := getConfigCLI(cli)
+	update := getConfigCLI(cli, log)
 
 	// Set things that weren't set by the CLI
 	if !update.Valid() {
-		getConfigEnv(&update)
+		getConfigEnv(&update, log)
 	}
 
 	// File vars
 	if !update.Valid() {
-		getConfigFile(&update, cli.File)
+		getConfigFile(&update, cli.File, log)
 	}
 
-	if err := makeUpdate(update); err != nil {
-		logrus.WithError(err).Fatal("error updating IP address")
+	if err := makeUpdate(update, log); err != nil {
+		log.WithError(err).Fatal("error updating IP address")
 		os.Exit(1)
 	}
-	logrus.Debug("IP address updated successfully")
+	log.Debug("IP address updated successfully")
 }
