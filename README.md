@@ -12,6 +12,7 @@ Usage of ./duckdns:
   -d, --debug               Use debug mode
   -n, --names stringSlice   Names to update with DuckDNS. Just the subdomain section. Use the flag multiple times to set multiple values.
   -t, --token string        Token for updating DuckDNS
+  -l, --log string          Log file path. If unset default to `stderr`
   ```
 
 ## Modes
