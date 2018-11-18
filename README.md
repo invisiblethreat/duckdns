@@ -6,7 +6,8 @@ Golang client for updating DNS entries at https://duckdns.org
 
 ## Usage
 
-```
+```bash
+
 Usage of ./duckdns:
   -c, --config string       Config file location (default "duckdns.yaml")
   -d, --debug               Use debug mode
