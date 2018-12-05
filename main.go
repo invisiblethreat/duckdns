@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -57,25 +56,25 @@ func getConfigFile(existing *Update, file string, log *logrus.Logger) {
 
 	yamlFile, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.WithError(err).Debug("error reading file")
+		log.WithError(err).Debug("Error reading file")
 		return
 	}
 	err = yaml.Unmarshal(yamlFile, &update)
 	if err != nil {
-		log.WithError(err).Debug("error unmarshaling YAML file")
+		log.WithError(err).Debug("Error unmarshaling YAML file")
 		return
 	}
 
 	// Set the token if it's not empty and doesn't already exist
 	if update.Token == "" {
-		log.Debugf("the token is empty after trying to parse %s", file)
+		log.Debugf("The token is empty after trying to parse %s", file)
 	} else if existing.Token == "" {
 		existing.Token = update.Token
 	}
 
 	// Set names to if they exist and value is not already set
 	if len(update.Names) == 0 {
-		log.Debugf("no names/subdomains specified to update from %s", file)
+		log.Debugf("No names/subdomains specified to update from %s", file)
 	} else if len(existing.Names) == 0 {
 		existing.Names = update.Names
 	}
@@ -109,43 +108,31 @@ func makeUpdate(update Update, log *logrus.Logger) error {
 		log.Fatal("Arguments not set for update!")
 		os.Exit(1)
 	}
-	var errs []string
 	stub := "https://www.duckdns.org/update?domains="
 	tokenStub := "&token="
 	ipStub := "&ip="
+	subdodomains := strings.Join(update.Names, ",")
 
-	for _, v := range update.Names {
-
-		url := fmt.Sprintf("%s%s%s%s%s", stub, v, tokenStub, update.Token, ipStub)
-		log.Debugf("Update string: %s", url)
-		res, err := http.Get(url)
-		if err != nil {
-			errs = append(errs, err.Error())
-			log.WithError(err).Error("Error contacting DuckDNS server")
-			break
-		}
-
-		bodyBytes, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			errs = append(errs, err.Error())
-			log.WithError(err).Error("Error reading body response")
-			break
-		}
-		res.Body.Close()
-
-		if strings.Contains(string(bodyBytes), "KO") {
-			errs = append(errs, fmt.Sprintf("Error updating %s with DuckDNS", v))
-			break
-		}
-
-		log.Debugf("updated DuckDNS for name %s", v)
-
+	url := fmt.Sprintf("%s%s%s%s%s", stub, subdodomains, tokenStub, update.Token, ipStub)
+	log.Debugf("Update string: %s", url)
+	res, err := http.Get(url)
+	if err != nil {
+		log.WithError(err).Error("Error contacting DuckDNS server")
+		return err
+	}
+	defer res.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.WithError(err).Error("Error reading body response")
+		return err
 	}
 
-	if len(errs) != 0 {
-		return errors.New(strings.Join(errs, "\n"))
+	if strings.Contains(string(bodyBytes), "KO") {
+		log.WithError(err).Error("Error returned from DuckDNS")
+		return err
 	}
 
+	log.Debugf("updated DuckDNS for name %s", subdodomains)
 	return nil
 }
 
