@@ -27,7 +27,7 @@ install:
 
 script:
   - diff -u <(echo -n) <(gofmt -d .)
-  - go tool vet .
+  - go vet .
   - GOOS=linux go build -o duckdns-linux
   - GOOS=darwin go build -o duckdns-macos
   - GOOS=windows go build -o duckdns-windowss
