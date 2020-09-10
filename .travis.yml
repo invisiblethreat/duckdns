@@ -8,10 +8,9 @@ go:
   - "1.14.x"
   - tip
 env:
-  - GIMME_OS=linux
-  - GIMME_OS=darwin
-  - GIMME_OS=windows
-  - GO111MODULE=on
+  - GO111MODULE=on GIMME_OS=linux
+  - GO111MODULE=on GIMME_OS=darwin
+  - GO111MODULE=on GIMME_OS=windows
 
 matrix:
   include:
