@@ -2,7 +2,6 @@ language: go
 sudo: false
 
 go:
-  - "1.10.x"
   - "1.11.x"
   - "1.12.x"
   - "1.13.x"
@@ -12,11 +11,10 @@ env:
   - GIMME_OS=linux
   - GIMME_OS=darwin
   - GIMME_OS=windows
+  - GO111MODULE=on
 
 matrix:
   include:
-    - go: 1.8
-    - go: 1.9
     - go: 1.11
     - go: 1.12
     - go: 1.13
@@ -33,4 +31,5 @@ script:
   - go tool vet .
   - GOOS=linux go build -o duckdns-linux
   - GOOS=darwin go build -o duckdns-macos
+  - GOOS=windows go build -o duckdns-windowss
   - go build -v ./...

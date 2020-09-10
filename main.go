@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/TV4/env"
+	"github.com/invisiblethreat/env"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	yaml "gopkg.in/yaml.v2"
